@@ -20,7 +20,7 @@ libc = "0.2.7"
 vergen = "0.1"
 target_info = "0.1"
 cita-types = { path = "../cita-types" }
-parking_lot = "0.6"
+parking_lot = "0.7"
 ansi_term = "0.9"
 tiny-keccak= "1.4"
 ethcore-bloom-journal = { path = "../ethcore-bloom-journal" }
