@@ -52,6 +52,7 @@ pub fn start_zeromq(
                 break;
             }
             let (topic, msg) = ret.unwrap();
+            warn!("start_zeromq send topic {}",topic);
             publisher
                 .send_multipart(&[&(topic.into_bytes())], zmq::SNDMORE)
                 .unwrap();
@@ -70,7 +71,7 @@ pub fn start_zeromq(
     assert!(jsonrpc_subscriber.connect("tcp://localhost:6002").is_ok());
 
     let consensus_subscriber = context.socket(zmq::SUB).unwrap();
-    assert!(network_subscriber.connect("tcp://localhost:6003").is_ok());
+    assert!(consensus_subscriber.connect("tcp://localhost:6003").is_ok());
 
     let executor_subscriber = context.socket(zmq::SUB).unwrap();
     assert!(executor_subscriber.connect("tcp://localhost:6004").is_ok());
