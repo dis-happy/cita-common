@@ -130,88 +130,98 @@ pub fn start_zeromq(
                     .unwrap();
                 flag | 0x40
             }
-            "synchronizer" => {}
+            "synchronizer" => {
+                flag
+            }
             _ => {
                 error!("invalid  flag! topic {}",tmp);
-                -1
+                flag
             }
         }
     }
 
+
     if flag & 0x01 != 0 {
+        let other_tx = tx.clone();
         let _ = thread::Builder::new()
             .name("network_subscriber".to_string())
             .spawn(move || loop {
                 let topic = network_subscriber.recv_string(0).unwrap().unwrap();
                 let msg = network_subscriber.recv_bytes(0).unwrap();
                 warn!("network_subscriber  recived {}  ",topic);
-                let _ = tx.clone().send((topic, msg));
+                let _ = other_tx.send((topic, msg));
             });
     }
 
     if flag & 0x02 != 0 {
+        let other_tx = tx.clone();
         let _ = thread::Builder::new()
             .name("chain_subscriber".to_string())
             .spawn(move || loop {
                 let topic = chain_subscriber.recv_string(0).unwrap().unwrap();
                 let msg = chain_subscriber.recv_bytes(0).unwrap();
                 warn!("chain_subscriber  recived {}  ",topic);
-                let _ = tx.clone().send((topic, msg));
+                let _ = other_tx.send((topic, msg));
             });
     }
 
     if flag & 0x04 != 0 {
+        let other_tx = tx.clone();
         let _ = thread::Builder::new()
             .name("jsonrpc_subscriber".to_string())
             .spawn(move || loop {
                 let topic = jsonrpc_subscriber.recv_string(0).unwrap().unwrap();
                 let msg = jsonrpc_subscriber.recv_bytes(0).unwrap();
                 warn!("jsonrpc_subscriber  recived {}  ",topic);
-                let _ = tx.clone().send((topic, msg));
+                let _ = other_tx.send((topic, msg));
             });
     }
 
     if flag & 0x08 != 0 {
+        let other_tx = tx.clone();
         let _ = thread::Builder::new()
             .name("consensus_subscriber".to_string())
             .spawn(move || loop {
                 let topic = consensus_subscriber.recv_string(0).unwrap().unwrap();
                 let msg = consensus_subscriber.recv_bytes(0).unwrap();
                 warn!("consensus_subscriber  recived {}  ",topic);
-                let _ = tx.clone().send((topic, msg));
+                let _ = other_tx.send((topic, msg));
             });
     }
 
     if flag & 0x10 != 0 {
+        let other_tx = tx.clone();
         let _ = thread::Builder::new()
             .name("executor_subscriber".to_string())
             .spawn(move || loop {
                 let topic = executor_subscriber.recv_string(0).unwrap().unwrap();
                 let msg = executor_subscriber.recv_bytes(0).unwrap();
                 warn!("executor_subscriber  recived {}  ",topic);
-                let _ = tx.clone().send((topic, msg));
+                let _ = other_tx.send((topic, msg));
             });
     }
 
     if flag & 0x20 != 0 {
+        let other_tx = tx.clone();
         let _ = thread::Builder::new()
             .name("auth_subscriber".to_string())
             .spawn(move || loop {
                 let topic = auth_subscriber.recv_string(0).unwrap().unwrap();
                 let msg = auth_subscriber.recv_bytes(0).unwrap();
                 warn!("auth_subscriber  recived {}  ",topic);
-                let _ = tx.clone().send((topic, msg));
+                let _ = other_tx.send((topic, msg));
             });
     }
 
     if flag & 0x40 != 0 {
+        let other_tx = tx.clone();
         let _ = thread::Builder::new()
             .name("snapshot_subscriber".to_string())
             .spawn(move || loop {
                 let topic = snapshot_subscriber.recv_string(0).unwrap().unwrap();
                 let msg = snapshot_subscriber.recv_bytes(0).unwrap();
                 warn!("snapshot_subscriber  recived {}  ",topic);
-                let _ = tx.clone().send((topic, msg));
+                let _ = other_tx.send((topic, msg));
             });
     }
 }
