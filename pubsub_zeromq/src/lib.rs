@@ -39,7 +39,7 @@ pub fn start_zeromq(
         "executor" => assert!(publisher.bind("tcp://*:6004").is_ok()),
         "auth" => assert!(publisher.bind("tcp://*:6005").is_ok()),
         "snapshot" => assert!(publisher.bind("tcp://*:6006").is_ok()),
-        "synchronizer" => assert!(publisher.bind("tcp://*:6007").is_ok()),
+        "synchronizer" => {},
         _ => error!("not hava {} module !", name),
     }
 
@@ -80,9 +80,6 @@ pub fn start_zeromq(
 
     let snapshot_subscriber = context.socket(zmq::SUB).unwrap();
     assert!(snapshot_subscriber.connect("tcp://localhost:6006").is_ok());
-
-    let sync_subscriber = context.socket(zmq::SUB).unwrap();
-    assert!(sync_subscriber.connect("tcp://localhost:6007").is_ok());
 
     let mut flag = 0;
     for topic in keys {
@@ -133,12 +130,7 @@ pub fn start_zeromq(
                     .unwrap();
                 flag | 0x40
             }
-            "synchronizer" => {
-                sync_subscriber
-                    .set_subscribe(&topic.to_string().into_bytes())
-                    .unwrap();
-                flag | 0x80
-            }
+            "synchronizer" => {}
             _ => {
                 error!("invalid  flag! topic {}",tmp);
                 -1
@@ -146,65 +138,80 @@ pub fn start_zeromq(
         }
     }
 
-    let _ = thread::Builder::new()
-        .name("subscriber".to_string())
-        .spawn(move || loop {
-                if flag & 0x10 != 0 {
-                    let topic = executor_subscriber.recv_string(0).unwrap().unwrap();
-                    let msg = executor_subscriber.recv_bytes(0).unwrap();
-                    warn!("executor_subscriber  recived {}  ",topic);
-                    let _ = tx.send((topic, msg));
-                }
+    if flag & 0x01 != 0 {
+        let _ = thread::Builder::new()
+            .name("network_subscriber".to_string())
+            .spawn(move || loop {
+                let topic = network_subscriber.recv_string(0).unwrap().unwrap();
+                let msg = network_subscriber.recv_bytes(0).unwrap();
+                warn!("network_subscriber  recived {}  ",topic);
+                let _ = tx.clone().send((topic, msg));
+            });
+    }
 
-                if flag & 0x01 != 0 {
-                    let topic = network_subscriber.recv_string(0).unwrap().unwrap();
-                    warn!("network_subscriber  recived {}  ",topic);
-                    let msg = network_subscriber.recv_bytes(0).unwrap();
-                    let _ = tx.send((topic, msg));
-                }
+    if flag & 0x02 != 0 {
+        let _ = thread::Builder::new()
+            .name("chain_subscriber".to_string())
+            .spawn(move || loop {
+                let topic = chain_subscriber.recv_string(0).unwrap().unwrap();
+                let msg = chain_subscriber.recv_bytes(0).unwrap();
+                warn!("chain_subscriber  recived {}  ",topic);
+                let _ = tx.clone().send((topic, msg));
+            });
+    }
 
-                if flag & 0x02 != 0 {
-                    let topic = chain_subscriber.recv_string(0).unwrap().unwrap();
-                    warn!("chain_subscriber  recived {}  ",topic);
-                    let msg = chain_subscriber.recv_bytes(0).unwrap();
-                    let _ = tx.send((topic, msg));
-                }
+    if flag & 0x04 != 0 {
+        let _ = thread::Builder::new()
+            .name("jsonrpc_subscriber".to_string())
+            .spawn(move || loop {
+                let topic = jsonrpc_subscriber.recv_string(0).unwrap().unwrap();
+                let msg = jsonrpc_subscriber.recv_bytes(0).unwrap();
+                warn!("jsonrpc_subscriber  recived {}  ",topic);
+                let _ = tx.clone().send((topic, msg));
+            });
+    }
 
-                if flag & 0x04 != 0 {
-                    let topic = jsonrpc_subscriber.recv_string(0).unwrap().unwrap();
-                    warn!("jsonrpc_subscriber  recived {}  ",topic);
-                    let msg = jsonrpc_subscriber.recv_bytes(0).unwrap();
-                    let _ = tx.send((topic, msg));
-                }
+    if flag & 0x08 != 0 {
+        let _ = thread::Builder::new()
+            .name("consensus_subscriber".to_string())
+            .spawn(move || loop {
+                let topic = consensus_subscriber.recv_string(0).unwrap().unwrap();
+                let msg = consensus_subscriber.recv_bytes(0).unwrap();
+                warn!("consensus_subscriber  recived {}  ",topic);
+                let _ = tx.clone().send((topic, msg));
+            });
+    }
 
-                if flag & 0x08 != 0 {
-                    let topic = consensus_subscriber.recv_string(0).unwrap().unwrap();
-                    warn!("consensus_subscriber  recived {}  ",topic);
-                    let msg = consensus_subscriber.recv_bytes(0).unwrap();
-                    let _ = tx.send((topic, msg));
-                }
+    if flag & 0x10 != 0 {
+        let _ = thread::Builder::new()
+            .name("executor_subscriber".to_string())
+            .spawn(move || loop {
+                let topic = executor_subscriber.recv_string(0).unwrap().unwrap();
+                let msg = executor_subscriber.recv_bytes(0).unwrap();
+                warn!("executor_subscriber  recived {}  ",topic);
+                let _ = tx.clone().send((topic, msg));
+            });
+    }
 
+    if flag & 0x20 != 0 {
+        let _ = thread::Builder::new()
+            .name("auth_subscriber".to_string())
+            .spawn(move || loop {
+                let topic = auth_subscriber.recv_string(0).unwrap().unwrap();
+                let msg = auth_subscriber.recv_bytes(0).unwrap();
+                warn!("auth_subscriber  recived {}  ",topic);
+                let _ = tx.clone().send((topic, msg));
+            });
+    }
 
-                if flag & 0x20 != 0 {
-                    let topic = auth_subscriber.recv_string(0).unwrap().unwrap();
-                    warn!("auth_subscriber  recived {}  ",topic);
-                    let msg = auth_subscriber.recv_bytes(0).unwrap();
-                    let _ = tx.send((topic, msg));
-                }
-
-                if flag & 0x40 != 0 {
-                    let topic = snapshot_subscriber.recv_string(0).unwrap().unwrap();
-                    warn!("snapshot_subscriber  recived {}  ",topic);
-                    let msg = snapshot_subscriber.recv_bytes(0).unwrap();
-                    let _ = tx.send((topic, msg));
-                }
-
-                if flag & 0x80 != 0 {
-                    let topic = sync_subscriber.recv_string(0).unwrap().unwrap();
-                    warn!("sync_subscriber  recived {}  ",topic);
-                    let msg = sync_subscriber.recv_bytes(0).unwrap();
-                    let _ = tx.send((topic, msg));
-                }
-
-        });
+    if flag & 0x40 != 0 {
+        let _ = thread::Builder::new()
+            .name("snapshot_subscriber".to_string())
+            .spawn(move || loop {
+                let topic = snapshot_subscriber.recv_string(0).unwrap().unwrap();
+                let msg = snapshot_subscriber.recv_bytes(0).unwrap();
+                warn!("snapshot_subscriber  recived {}  ",topic);
+                let _ = tx.clone().send((topic, msg));
+            });
+    }
 }
