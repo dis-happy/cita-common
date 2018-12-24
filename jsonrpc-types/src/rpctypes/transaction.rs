@@ -94,7 +94,7 @@ pub struct Transaction {
     pub value: Quantity,
     pub chain_id: Integer,
     pub version: Integer,
-    pub idd: Integer,
+    pub caData: Data,
 }
 
 impl From<ProtoTransaction> for Transaction {
@@ -108,7 +108,7 @@ impl From<ProtoTransaction> for Transaction {
             value: tx.value.into(),
             chain_id: tx.chain_id.into(),
             version: tx.version.into(),
-            idd: tx.idd.into(),
+            caData: tx.caData.into(),
         }
     }
 }
