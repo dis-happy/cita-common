@@ -46,6 +46,7 @@ pub enum SubModules {
     Executor,
     Synchronizer,
     Snapshot,
+    Ca,
     All,
     Unknown,
 }
@@ -56,6 +57,7 @@ pub enum MsgType {
     RawBytes,
     Request,
     Response,
+    ResponseCa,
     SyncRequest,
     SyncResponse,
     Status,
@@ -133,6 +135,7 @@ impl fmt::Display for SubModules {
                 &SubModules::Executor => "executor",
                 &SubModules::Synchronizer => "synchronizer",
                 &SubModules::Snapshot => "snapshot",
+                &SubModules::Ca => "ca",
                 &SubModules::All => "*",
                 &SubModules::Unknown => UNKNOWN,
             }
@@ -150,6 +153,7 @@ impl fmt::Display for MsgType {
                 &MsgType::RawBytes => "raw_bytes",
                 &MsgType::Request => "request",
                 &MsgType::Response => "response",
+                &MsgType::ResponseCa => "response_ca",
                 &MsgType::SyncRequest => "sync_request",
                 &MsgType::SyncResponse => "sync_response",
                 &MsgType::Status => "status",
@@ -201,6 +205,7 @@ impl<'a> From<&'a str> for SubModules {
             "executor" => SubModules::Executor,
             "synchronizer" => SubModules::Synchronizer,
             "snapshot" => SubModules::Snapshot,
+            "ca" => SubModules::Ca,
             "*" => SubModules::All,
             _ => SubModules::Unknown,
         }
@@ -214,6 +219,7 @@ impl<'a> From<&'a str> for MsgType {
             "raw_bytes" => MsgType::RawBytes,
             "request" => MsgType::Request,
             "response" => MsgType::Response,
+            "response_ca" => MsgType::ResponseCa,
             "sync_request" => MsgType::SyncRequest,
             "sync_response" => MsgType::SyncResponse,
             "status" => MsgType::Status,
@@ -258,25 +264,25 @@ impl<'a> From<&'a str> for RoutingKey {
 }
 
 macro_rules! impl_some_traits {
-    ($struct:ident) => {
-        impl From<String> for $struct {
-            fn from(s: String) -> $struct {
-                $struct::from(s.as_str())
-            }
-        }
+($struct:ident) => {
+impl From<String> for $struct {
+fn from(s: String) -> $struct {
+$struct::from(s.as_str())
+}
+}
 
-        impl<'a> From<&'a String> for $struct {
-            fn from(s: &'a String) -> $struct {
-                $struct::from(s.as_str())
-            }
-        }
+impl<'a> From<&'a String> for $struct {
+fn from(s: &'a String) -> $struct {
+$struct::from(s.as_str())
+}
+}
 
-        impl Into<String> for $struct {
-            fn into(self) -> String {
-                self.to_string()
-            }
-        }
-    };
+impl Into<String> for $struct {
+fn into(self) -> String {
+self.to_string()
+}
+}
+};
 }
 
 impl_some_traits!(SubModules);
@@ -286,47 +292,47 @@ impl_some_traits!(RoutingKey);
 #[cfg(test)]
 mod tests {
 
-    #[test]
-    fn macros_works() {
-        use super::{MsgType, RoutingKey, SubModules};
-        let rk_ar = routing_key!(Auth >> Request);
-        assert_eq!(rk_ar, RoutingKey(SubModules::Auth, MsgType::Request));
-    }
+#[test]
+fn macros_works() {
+use super::{MsgType, RoutingKey, SubModules};
+let rk_ar = routing_key!(Auth >> Request);
+assert_eq!(rk_ar, RoutingKey(SubModules::Auth, MsgType::Request));
+}
 
-    #[test]
-    fn traits_from_works() {
-        use super::{MsgType, RoutingKey, SubModules};
-        use std::convert::From;
-        let sm = SubModules::from("jsonrpc");
-        assert_eq!(sm, SubModules::Jsonrpc);
-        assert_eq!(sm.to_string().as_str(), "jsonrpc");
-        let mt = MsgType::from("request");
-        assert_eq!(mt, MsgType::Request);
-        assert_eq!(mt.to_string().as_str(), "request");
-        let mut rk = RoutingKey::from("jsonrpc.request");
-        assert_eq!(rk.get_sub_module(), SubModules::Jsonrpc);
-        assert_eq!(rk.get_msg_type(), MsgType::Request);
-        assert_eq!(rk.to_string().as_str(), "jsonrpc.request");
-        rk.set_sub_module(SubModules::Net);
-        rk.set_msg_type(MsgType::Response);
-        assert_eq!(rk.to_string().as_str(), "net.response");
-        let rk_custom = RoutingKey::from("net.anything-is-ok");
-        assert_eq!(rk_custom.to_string().as_str(), "net.__unknown__");
-        assert!(rk_custom.is_sub_module(SubModules::Net));
-        assert!(rk_custom.is_msg_type(MsgType::Unknown));
-        assert!(!rk_custom.is_sub_module(SubModules::Jsonrpc));
-        assert!(!rk_custom.is_msg_type(MsgType::All));
-        let rk_custom = RoutingKey::from("anything-is-ok.*");
-        assert_eq!(rk_custom.to_string().as_str(), "__unknown__.*");
-        assert!(rk_custom.is_sub_module(SubModules::Unknown));
-        assert!(rk_custom.is_msg_type(MsgType::All));
-        assert!(!rk_custom.is_sub_module(SubModules::Jsonrpc));
-        assert!(!rk_custom.is_msg_type(MsgType::Request));
-        let rk_error = RoutingKey::from("an-unknown-string");
-        assert_eq!(rk_error.to_string().as_str(), "__unknown__.__unknown__");
-        let rk_error = RoutingKey::from("an-unknown.string");
-        assert_eq!(rk_error.to_string().as_str(), "__unknown__.__unknown__");
-        let rk_error = RoutingKey::from("an.unknown.string");
-        assert_eq!(rk_error.to_string().as_str(), "__unknown__.__unknown__");
-    }
+#[test]
+fn traits_from_works() {
+use super::{MsgType, RoutingKey, SubModules};
+use std::convert::From;
+let sm = SubModules::from("jsonrpc");
+assert_eq!(sm, SubModules::Jsonrpc);
+assert_eq!(sm.to_string().as_str(), "jsonrpc");
+let mt = MsgType::from("request");
+assert_eq!(mt, MsgType::Request);
+assert_eq!(mt.to_string().as_str(), "request");
+let mut rk = RoutingKey::from("jsonrpc.request");
+assert_eq!(rk.get_sub_module(), SubModules::Jsonrpc);
+assert_eq!(rk.get_msg_type(), MsgType::Request);
+assert_eq!(rk.to_string().as_str(), "jsonrpc.request");
+rk.set_sub_module(SubModules::Net);
+rk.set_msg_type(MsgType::Response);
+assert_eq!(rk.to_string().as_str(), "net.response");
+let rk_custom = RoutingKey::from("net.anything-is-ok");
+assert_eq!(rk_custom.to_string().as_str(), "net.__unknown__");
+assert!(rk_custom.is_sub_module(SubModules::Net));
+assert!(rk_custom.is_msg_type(MsgType::Unknown));
+assert!(!rk_custom.is_sub_module(SubModules::Jsonrpc));
+assert!(!rk_custom.is_msg_type(MsgType::All));
+let rk_custom = RoutingKey::from("anything-is-ok.*");
+assert_eq!(rk_custom.to_string().as_str(), "__unknown__.*");
+assert!(rk_custom.is_sub_module(SubModules::Unknown));
+assert!(rk_custom.is_msg_type(MsgType::All));
+assert!(!rk_custom.is_sub_module(SubModules::Jsonrpc));
+assert!(!rk_custom.is_msg_type(MsgType::Request));
+let rk_error = RoutingKey::from("an-unknown-string");
+assert_eq!(rk_error.to_string().as_str(), "__unknown__.__unknown__");
+let rk_error = RoutingKey::from("an-unknown.string");
+assert_eq!(rk_error.to_string().as_str(), "__unknown__.__unknown__");
+let rk_error = RoutingKey::from("an.unknown.string");
+assert_eq!(rk_error.to_string().as_str(), "__unknown__.__unknown__");
+}
 }
